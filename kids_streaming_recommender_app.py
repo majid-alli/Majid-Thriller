@@ -1,9 +1,9 @@
-# Multi-language Thriller Streaming Recommender — Streamlit
+# Multi-language Thriller Streaming Recommender — Streamlit (Multi-select)
 
 import streamlit as st
 import requests
 import time
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, List
 
 TMDB_API_KEY = "f6f362ba2df690f3c13fb52e3f0e05db"  # Replace with your TMDb key
 
@@ -13,7 +13,7 @@ if not TMDB_API_KEY:
 
 st.set_page_config(page_title="Thriller Movie Recommender", page_icon="🎬", layout="wide")
 st.title("🎬 Thriller Movie Recommender")
-st.caption("Find thriller movies (IMDb ≥ 7) on Netflix, Disney+ Hotstar, Amazon Prime Video, and ZEE5 (India). Choose language preference.")
+st.caption("Find thriller movies (IMDb ≥ 7) across Netflix, Disney+ Hotstar, Amazon Prime Video, and ZEE5. Choose multiple languages.")
 
 TMDB_BASE = "https://api.themoviedb.org/3"
 IMG_BASE = "https://image.tmdb.org/t/p/w500"
@@ -27,7 +27,7 @@ def tmdb_get(path: str, params: Dict) -> Dict:
     return r.json()
 
 @st.cache_data(ttl=3600)
-def discover_movies(page: int, min_votes: int, language_filter: str) -> Dict:
+def discover_movies(page: int, min_votes: int, language_filters: Optional[List[str]]) -> Dict:
     params = {
         "sort_by": "popularity.desc",
         "with_genres": "53",  # Thriller genre
@@ -36,8 +36,8 @@ def discover_movies(page: int, min_votes: int, language_filter: str) -> Dict:
         "vote_count.gte": min_votes,
         "region": "IN"
     }
-    if language_filter:
-        params["with_original_language"] = language_filter
+    if language_filters and "all" not in language_filters:
+        params["with_original_language"] = ",".join(language_filters)
     return tmdb_get("/discover/movie", params)
 
 @st.cache_data(ttl=3600)
@@ -75,29 +75,34 @@ selected_platforms = st.sidebar.multiselect(
     ["Netflix", "Disney+ Hotstar", "Amazon Prime Video", "ZEE5"],
     default=["Netflix", "Disney+ Hotstar", "Amazon Prime Video", "ZEE5"]
 )
-language_choice = st.sidebar.radio(
-    "Select language:",
-    ["All", "Hindi", "English", "Tamil", "Telugu", "Malayalam"],
-    index=0
+
+# Multi-select for languages
+language_options = ["All", "Hindi", "English", "Tamil", "Telugu", "Malayalam", "Korean"]
+language_choice = st.sidebar.multiselect(
+    "Select language(s):", language_options, default=["All"]
 )
-language_filter = ""
-if language_choice == "Hindi":
-    language_filter = "hi"
-elif language_choice == "English":
-    language_filter = "en"
-elif language_choice == "Tamil":
-    language_filter = "ta"
-elif language_choice == "Telugu":
-    language_filter = "te"
-elif language_choice == "Malayalam":
-    language_filter = "ml"
+
+# Map selected languages to TMDb codes
+lang_map = {
+    "Hindi": "hi",
+    "English": "en",
+    "Tamil": "ta",
+    "Telugu": "te",
+    "Malayalam": "ml",
+    "Korean": "ko"
+}
+language_filters = []
+if "All" not in language_choice:
+    language_filters = [lang_map[l] for l in language_choice if l in lang_map]
+else:
+    language_filters = ["all"]  # Special flag to include all languages
 
 if st.sidebar.button("Find Thrillers"):
     with st.spinner("Fetching movies..."):
         movies = []
         for page in range(1, pages_to_fetch + 1):
             try:
-                data = discover_movies(page, min_votes, language_filter)
+                data = discover_movies(page, min_votes, language_filters)
             except Exception as e:
                 st.error(f"Error fetching movies: {e}")
                 continue
