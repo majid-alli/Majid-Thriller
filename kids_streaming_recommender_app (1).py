@@ -1,4 +1,4 @@
-# Thriller Streaming Recommender — Streamlit
+# Multi-language Thriller Streaming Recommender — Streamlit
 
 import streamlit as st
 import requests
@@ -13,7 +13,7 @@ if not TMDB_API_KEY:
 
 st.set_page_config(page_title="Thriller Movie Recommender", page_icon="🎬", layout="wide")
 st.title("🎬 Thriller Movie Recommender")
-st.caption("Find thriller movies on Netflix, Disney+ Hotstar, Amazon Prime Video, and ZEE5 (India) with IMDb ≥ 7.")
+st.caption("Find thriller movies (IMDb ≥ 7) on Netflix, Disney+ Hotstar, Amazon Prime Video, and ZEE5 (India). Choose language preference.")
 
 TMDB_BASE = "https://api.themoviedb.org/3"
 IMG_BASE = "https://image.tmdb.org/t/p/w500"
@@ -27,15 +27,18 @@ def tmdb_get(path: str, params: Dict) -> Dict:
     return r.json()
 
 @st.cache_data(ttl=3600)
-def discover_movies(page: int, min_votes: int) -> Dict:
+def discover_movies(page: int, min_votes: int, language_filter: Optional[str]) -> Dict:
     params = {
         "sort_by": "popularity.desc",
         "with_genres": "53",  # Thriller genre
         "include_adult": "false",
         "page": page,
         "vote_count.gte": min_votes,
-        "region": "IN",
+        "region": "IN"
     }
+    # Only apply language filter if a specific language is chosen
+    if language_filter is not None:
+        params["with_original_language"] = language_filter
     return tmdb_get("/discover/movie", params)
 
 @st.cache_data(ttl=3600)
@@ -73,13 +76,31 @@ selected_platforms = st.sidebar.multiselect(
     ["Netflix", "Disney+ Hotstar", "Amazon Prime Video", "ZEE5"],
     default=["Netflix", "Disney+ Hotstar", "Amazon Prime Video", "ZEE5"]
 )
+language_choice = st.sidebar.radio(
+    "Select language:",
+    ["All", "Hindi", "English", "Tamil", "Telugu", "Malayalam"],
+    index=0
+)
+
+# Fix: Do not apply language filter if "All" is selected
+language_filter = None
+if language_choice == "Hindi":
+    language_filter = "hi"
+elif language_choice == "English":
+    language_filter = "en"
+elif language_choice == "Tamil":
+    language_filter = "ta"
+elif language_choice == "Telugu":
+    language_filter = "te"
+elif language_choice == "Malayalam":
+    language_filter = "ml"
 
 if st.sidebar.button("Find Thrillers"):
     with st.spinner("Fetching movies..."):
         movies = []
         for page in range(1, pages_to_fetch + 1):
             try:
-                data = discover_movies(page, min_votes)
+                data = discover_movies(page, min_votes, language_filter)
             except Exception as e:
                 st.error(f"Error fetching movies: {e}")
                 continue
@@ -102,7 +123,7 @@ if st.sidebar.button("Find Thrillers"):
         if not movies:
             st.warning("No thriller movies found matching criteria.")
         else:
-            st.success(f"Found {len(movies)} movies!")
+            st.success(f"Found {len(movies)} thriller movies!")
             cols = st.columns(4)
             for idx, movie in enumerate(movies):
                 c = cols[idx % 4]
