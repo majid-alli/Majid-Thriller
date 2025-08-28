@@ -1,4 +1,4 @@
-# Multi-language Thriller Streaming Recommender — Streamlit (Multi-select)
+# Multi-language Thriller Streaming Recommender — Streamlit (Multi-select, IMDb ≥ 5.5, Language Button)
 
 import streamlit as st
 import requests
@@ -13,7 +13,7 @@ if not TMDB_API_KEY:
 
 st.set_page_config(page_title="Thriller Movie Recommender", page_icon="🎬", layout="wide")
 st.title("🎬 Thriller Movie Recommender")
-st.caption("Find thriller movies (IMDb ≥ 7) across Netflix, Disney+ Hotstar, Amazon Prime Video, and ZEE5. Choose multiple languages.")
+st.caption("Find thriller movies (IMDb ≥ 5.5) across Netflix, Disney+ Hotstar, Amazon Prime Video, and ZEE5. Choose multiple languages.")
 
 TMDB_BASE = "https://api.themoviedb.org/3"
 IMG_BASE = "https://image.tmdb.org/t/p/w500"
@@ -76,7 +76,7 @@ selected_platforms = st.sidebar.multiselect(
     default=["Netflix", "Disney+ Hotstar", "Amazon Prime Video", "ZEE5"]
 )
 
-# Multi-select for languages
+# Multi-select for languages with button-like UI
 language_options = ["All", "Hindi", "English", "Tamil", "Telugu", "Malayalam", "Korean"]
 language_choice = st.sidebar.multiselect(
     "Select language(s):", language_options, default=["All"]
@@ -111,7 +111,7 @@ if st.sidebar.button("Find Thrillers"):
                 avail, found_platforms = available_on_in(providers, selected_platforms)
                 if not avail:
                     continue
-                if m.get("vote_average", 0) < 7:
+                if m.get("vote_average", 0) < 5.5:
                     continue
                 movies.append({
                     "title": m.get("title"),
